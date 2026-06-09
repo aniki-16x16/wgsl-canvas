@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WGSL Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #11131a;
+      color: #d9deea;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 40%, #222836 0%, #11131a 60%);
+      text-align: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .card {
+      border: 1px solid #3e465a;
+      border-radius: 12px;
+      padding: 20px;
+      background: rgba(18, 22, 30, 0.8);
+      max-width: 520px;
+    }
+
+    .title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .desc {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #b7c0d4;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1 class="title">WGSL Preview Panel Ready</h1>
+      <p class="desc">
+        M1 skeleton is active. In next step, this panel will track active WGSL files and refresh preview.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
