@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src __CSP_SOURCE__;" />
   <title>WGSL Preview</title>
   <style>
     :root {
@@ -50,16 +51,32 @@
       line-height: 1.6;
       color: #b7c0d4;
     }
+
+    .source {
+      margin-top: 14px;
+      border: 1px solid #2f3648;
+      border-radius: 8px;
+      background: rgba(8, 11, 16, 0.78);
+      color: #a9d1ff;
+      font-size: 12px;
+      line-height: 1.5;
+      padding: 10px;
+      text-align: left;
+      max-height: 240px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
   </style>
 </head>
 <body>
   <main class="container">
     <section class="card">
-      <h1 class="title">WGSL Preview Panel Ready</h1>
-      <p class="desc">
-        M1 skeleton is active. In next step, this panel will track active WGSL files and refresh preview.
-      </p>
+      <h1 class="title" id="status-text">WGSL Preview 已就绪</h1>
+      <p class="desc" id="detail-text">等待活动 WGSL 文件...</p>
+      <pre class="source" id="source-preview">// waiting for active WGSL document...</pre>
     </section>
   </main>
+  <script src="__SCRIPT_URI__"></script>
 </body>
 </html>
