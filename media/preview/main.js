@@ -25,6 +25,22 @@ const hideOverlay = () => {
   overlayElement.classList.add("hidden");
 };
 
+const normalizeCompilationErrors = (messages) => {
+  return messages.slice(0, 20).map((item) => {
+    const line = Number.isFinite(item.lineNum) ? item.lineNum : 1;
+    const column = Number.isFinite(item.linePos) ? item.linePos : 1;
+    const length =
+      Number.isFinite(item.length) && item.length > 0 ? item.length : 1;
+
+    return {
+      line,
+      column,
+      length,
+      message: item.message,
+    };
+  });
+};
+
 class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -44,6 +60,7 @@ class Renderer {
     this.isReady = false;
     this.currentShaderSource = "";
     this.runtimeErrorHandler = undefined;
+    this.compileGeneration = 0;
 
     this.renderFrame = this.renderFrame.bind(this);
   }
@@ -152,12 +169,37 @@ class Renderer {
       return { ok: false, error: "WebGPU 设备未就绪" };
     }
 
+    const generation = ++this.compileGeneration;
     this.currentShaderSource = shaderSource;
 
     try {
       const shaderModule = this.device.createShaderModule({
         code: shaderSource,
       });
+
+      const compilationInfo = await shaderModule.getCompilationInfo();
+      const errorMessages = compilationInfo.messages.filter(
+        (item) => item.type === "error",
+      );
+
+      if (errorMessages.length > 0) {
+        const diagnostics = normalizeCompilationErrors(errorMessages);
+        const detailText = errorMessages
+          .slice(0, 8)
+          .map((item) => {
+            const line = item.lineNum > 0 ? `L${item.lineNum}` : "L?";
+            const col = item.linePos > 0 ? `C${item.linePos}` : "C?";
+            return `${line}:${col} ${item.message}`;
+          })
+          .join("\n");
+
+        return {
+          ok: false,
+          error: detailText,
+          stale: false,
+          diagnostics,
+        };
+      }
 
       const pipeline = await this.device.createRenderPipelineAsync({
         layout: this.pipelineLayout,
@@ -188,14 +230,32 @@ class Renderer {
         },
       });
 
+      if (generation !== this.compileGeneration) {
+        return {
+          ok: false,
+          error: "stale_result",
+          stale: true,
+          diagnostics: [],
+        };
+      }
+
       this.pipeline = pipeline;
 
-      return { ok: true };
+      return { ok: true, stale: false, diagnostics: [] };
     } catch (error) {
       this.pipeline = undefined;
 
       const message = error instanceof Error ? error.message : String(error);
-      return { ok: false, error: message };
+      if (generation !== this.compileGeneration) {
+        return {
+          ok: false,
+          error: "stale_result",
+          stale: true,
+          diagnostics: [],
+        };
+      }
+
+      return { ok: false, error: message, stale: false, diagnostics: [] };
     }
   }
 
@@ -302,13 +362,32 @@ window.addEventListener("message", (event) => {
   }
 
   if (message.type === "shader:update") {
+    const targetUri = message.uri;
+    const targetVersion = message.version;
+
     renderer.setShaderSource(message.source).then((result) => {
+      if (result.stale) {
+        return;
+      }
+
       if (!result.ok) {
         showOverlay("WGSL 编译失败", result.error);
+        vscode.postMessage({
+          type: "compile:error",
+          uri: targetUri,
+          version: targetVersion,
+          error: result.error,
+          diagnostics: result.diagnostics,
+        });
         return;
       }
 
       hideOverlay();
+      vscode.postMessage({
+        type: "compile:ok",
+        uri: targetUri,
+        version: targetVersion,
+      });
     });
   }
 });

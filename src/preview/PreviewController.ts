@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as vscode from "vscode";
 import {
+  CompileErrorItem,
   ExtensionToWebviewMessage,
   WebviewToExtensionMessage,
 } from "../common/protocol";
@@ -16,14 +17,20 @@ export class PreviewController {
 
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
+  private readonly diagnosticsCollection: vscode.DiagnosticCollection;
   private readonly disposables: vscode.Disposable[] = [];
   private readonly editorTracker: EditorTracker;
   private readonly updateScheduler: UpdateScheduler;
   private isWebviewReady = false;
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private constructor(
+    panel: vscode.WebviewPanel,
+    extensionUri: vscode.Uri,
+    diagnosticsCollection: vscode.DiagnosticCollection,
+  ) {
     this.panel = panel;
     this.extensionUri = extensionUri;
+    this.diagnosticsCollection = diagnosticsCollection;
     this.updateScheduler = new UpdateScheduler(WGSL_DEBOUNCE_MS);
     this.editorTracker = new EditorTracker(
       (editor) => this.onActiveEditorChange(editor),
@@ -41,7 +48,10 @@ export class PreviewController {
     this.render();
   }
 
-  public static createOrShow(context: vscode.ExtensionContext): void {
+  public static createOrShow(
+    context: vscode.ExtensionContext,
+    diagnosticsCollection: vscode.DiagnosticCollection,
+  ): void {
     if (PreviewController.currentPanel) {
       PreviewController.currentPanel.reveal();
       return;
@@ -63,6 +73,7 @@ export class PreviewController {
     PreviewController.currentPanel = new PreviewController(
       panel,
       context.extensionUri,
+      diagnosticsCollection,
     );
   }
 
@@ -95,12 +106,72 @@ export class PreviewController {
   }
 
   private onWebviewMessage(message: WebviewToExtensionMessage): void {
-    if (message.type !== "ready") {
+    if (message.type === "ready") {
+      this.isWebviewReady = true;
+      this.pushActiveDocumentState();
       return;
     }
 
-    this.isWebviewReady = true;
-    this.pushActiveDocumentState();
+    if (message.type === "compile:ok") {
+      this.clearDiagnosticsForUri(message.uri, message.version);
+      return;
+    }
+
+    if (message.type === "compile:error") {
+      this.publishDiagnosticsForUri(
+        message.uri,
+        message.version,
+        message.diagnostics,
+      );
+    }
+  }
+
+  private publishDiagnosticsForUri(
+    uriRaw: string,
+    version: number,
+    compileErrors: CompileErrorItem[],
+  ): void {
+    const uri = vscode.Uri.parse(uriRaw);
+    const openDocument = vscode.workspace.textDocuments.find(
+      (item) => item.uri.toString() === uri.toString(),
+    );
+
+    if (openDocument && openDocument.version !== version) {
+      return;
+    }
+
+    const diagnostics = compileErrors.map((item) => {
+      const startLine = Math.max(0, item.line - 1);
+      const startColumn = Math.max(0, item.column - 1);
+      const endColumn = startColumn + Math.max(1, item.length);
+      const range = new vscode.Range(
+        startLine,
+        startColumn,
+        startLine,
+        endColumn,
+      );
+
+      return new vscode.Diagnostic(
+        range,
+        item.message,
+        vscode.DiagnosticSeverity.Error,
+      );
+    });
+
+    this.diagnosticsCollection.set(uri, diagnostics);
+  }
+
+  private clearDiagnosticsForUri(uriRaw: string, version: number): void {
+    const uri = vscode.Uri.parse(uriRaw);
+    const openDocument = vscode.workspace.textDocuments.find(
+      (item) => item.uri.toString() === uri.toString(),
+    );
+
+    if (openDocument && openDocument.version !== version) {
+      return;
+    }
+
+    this.diagnosticsCollection.delete(uri);
   }
 
   private onActiveEditorChange(editor: vscode.TextEditor | undefined): void {
@@ -172,6 +243,7 @@ export class PreviewController {
 
   public dispose(): void {
     PreviewController.currentPanel = undefined;
+    this.diagnosticsCollection.clear();
 
     while (this.disposables.length > 0) {
       const item = this.disposables.pop();
