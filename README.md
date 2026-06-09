@@ -105,10 +105,6 @@ fn vs_main(@location(0) in_pos: vec2f) -> vs_out {
   return out_data;
 }
 
-fn sdf_circle(p: vec2f, radius: f32) -> f32 {
-  return length(p) - radius;
-}
-
 @fragment
 fn fs_main(in_data: vs_out) -> @location(0) vec4f {
   return vec4f(1.0);
