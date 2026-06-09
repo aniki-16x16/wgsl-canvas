@@ -51,6 +51,7 @@ class Renderer {
     this.vertexBuffer = undefined;
     this.timeBuffer = undefined;
     this.resolutionBuffer = undefined;
+    this.mouseBuffer = undefined;
     this.bindGroupLayout = undefined;
     this.pipelineLayout = undefined;
     this.pipeline = undefined;
@@ -62,9 +63,15 @@ class Renderer {
     this.currentShaderSource = "";
     this.runtimeErrorHandler = undefined;
     this.compileGeneration = 0;
+    this.mousePosition = { x: 0, y: 0 };
+    this.isLeftMouseDown = 0;
 
     this.renderFrame = this.renderFrame.bind(this);
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+    this.handlePointerMove = this.handlePointerMove.bind(this);
+    this.handlePointerLeave = this.handlePointerLeave.bind(this);
+    this.handlePointerDown = this.handlePointerDown.bind(this);
+    this.handlePointerUp = this.handlePointerUp.bind(this);
   }
 
   setRuntimeErrorHandler(handler) {
@@ -117,6 +124,11 @@ class Renderer {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
+    this.mouseBuffer = this.device.createBuffer({
+      size: UNIFORM_BINDING_SIZE,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
     this.bindGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
@@ -129,6 +141,14 @@ class Renderer {
         },
         {
           binding: 1,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: {
+            type: "uniform",
+            minBindingSize: UNIFORM_BINDING_SIZE,
+          },
+        },
+        {
+          binding: 2,
           visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
           buffer: {
             type: "uniform",
@@ -153,18 +173,78 @@ class Renderer {
           binding: 1,
           resource: { buffer: this.resolutionBuffer },
         },
+        {
+          binding: 2,
+          resource: { buffer: this.mouseBuffer },
+        },
       ],
     });
 
     this.isReady = true;
     this.resizeCanvas();
+    this.writeMouseUniform();
     this.startRendering();
     window.addEventListener("resize", () => {
       this.resizeCanvas();
     });
     document.addEventListener("visibilitychange", this.handleVisibilityChange);
+    this.canvas.addEventListener("pointermove", this.handlePointerMove);
+    this.canvas.addEventListener("pointerleave", this.handlePointerLeave);
+    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
+    window.addEventListener("pointerup", this.handlePointerUp);
 
     return true;
+  }
+
+  handlePointerMove(event) {
+    const rect = this.canvas.getBoundingClientRect();
+    const pixelRatio = window.devicePixelRatio || 1;
+    this.mousePosition.x = (event.clientX - rect.left) * pixelRatio;
+    this.mousePosition.y = (event.clientY - rect.top) * pixelRatio;
+    this.isLeftMouseDown = (event.buttons & 1) === 1 ? 1 : 0;
+    this.writeMouseUniform();
+  }
+
+  handlePointerDown(event) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    this.isLeftMouseDown = 1;
+    this.writeMouseUniform();
+  }
+
+  handlePointerUp(event) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    this.isLeftMouseDown = 0;
+    this.writeMouseUniform();
+  }
+
+  handlePointerLeave() {
+    this.mousePosition.x = 0;
+    this.mousePosition.y = 0;
+    this.isLeftMouseDown = 0;
+    this.writeMouseUniform();
+  }
+
+  writeMouseUniform() {
+    if (!this.device || !this.mouseBuffer) {
+      return;
+    }
+
+    this.device.queue.writeBuffer(
+      this.mouseBuffer,
+      0,
+      new Float32Array([
+        this.mousePosition.x,
+        this.canvas.height - this.mousePosition.y,
+        this.isLeftMouseDown,
+        0,
+      ]),
+    );
   }
 
   handleVisibilityChange() {
@@ -315,7 +395,7 @@ class Renderer {
     this.device.queue.writeBuffer(
       this.resolutionBuffer,
       0,
-      new Float32Array([width, height]),
+      new Float32Array([width, height, 0, 0]),
     );
   }
 
@@ -330,7 +410,7 @@ class Renderer {
     this.device.queue.writeBuffer(
       this.timeBuffer,
       0,
-      new Float32Array([elapsed]),
+      new Float32Array([elapsed, 0, 0, 0]),
     );
 
     const commandEncoder = this.device.createCommandEncoder();
