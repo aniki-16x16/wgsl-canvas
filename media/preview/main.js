@@ -57,12 +57,14 @@ class Renderer {
     this.bindGroup = undefined;
     this.startTimeMs = performance.now();
     this.frameHandle = 0;
+    this.isRenderingActive = false;
     this.isReady = false;
     this.currentShaderSource = "";
     this.runtimeErrorHandler = undefined;
     this.compileGeneration = 0;
 
     this.renderFrame = this.renderFrame.bind(this);
+    this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
   }
 
   setRuntimeErrorHandler(handler) {
@@ -156,12 +158,43 @@ class Renderer {
 
     this.isReady = true;
     this.resizeCanvas();
-    this.frameHandle = requestAnimationFrame(this.renderFrame);
+    this.startRendering();
     window.addEventListener("resize", () => {
       this.resizeCanvas();
     });
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
 
     return true;
+  }
+
+  handleVisibilityChange() {
+    if (document.hidden) {
+      this.stopRendering();
+      return;
+    }
+
+    this.startRendering();
+  }
+
+  startRendering() {
+    if (this.isRenderingActive) {
+      return;
+    }
+
+    this.isRenderingActive = true;
+    this.frameHandle = requestAnimationFrame(this.renderFrame);
+  }
+
+  stopRendering() {
+    if (!this.isRenderingActive) {
+      return;
+    }
+
+    this.isRenderingActive = false;
+    if (this.frameHandle) {
+      cancelAnimationFrame(this.frameHandle);
+      this.frameHandle = 0;
+    }
   }
 
   async setShaderSource(shaderSource) {
@@ -243,8 +276,6 @@ class Renderer {
 
       return { ok: true, stale: false, diagnostics: [] };
     } catch (error) {
-      this.pipeline = undefined;
-
       const message = error instanceof Error ? error.message : String(error);
       if (generation !== this.compileGeneration) {
         return {
@@ -289,7 +320,7 @@ class Renderer {
   }
 
   renderFrame(nowMs) {
-    if (!this.device || !this.context) {
+    if (!this.isRenderingActive || !this.device || !this.context) {
       return;
     }
 
@@ -323,7 +354,9 @@ class Renderer {
 
     renderPass.end();
     this.device.queue.submit([commandEncoder.finish()]);
-    this.frameHandle = requestAnimationFrame(this.renderFrame);
+    if (this.isRenderingActive) {
+      this.frameHandle = requestAnimationFrame(this.renderFrame);
+    }
   }
 }
 

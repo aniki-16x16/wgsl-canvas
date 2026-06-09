@@ -6,6 +6,7 @@ export class EditorTracker implements vscode.Disposable {
   public constructor(
     on_active_editor_change: (editor: vscode.TextEditor | undefined) => void,
     on_text_document_change: (document: vscode.TextDocument) => void,
+    on_text_document_close: (document: vscode.TextDocument) => void,
   ) {
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -13,6 +14,9 @@ export class EditorTracker implements vscode.Disposable {
       }),
       vscode.workspace.onDidChangeTextDocument((event) => {
         on_text_document_change(event.document);
+      }),
+      vscode.workspace.onDidCloseTextDocument((document) => {
+        on_text_document_close(document);
       }),
     );
   }

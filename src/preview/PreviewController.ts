@@ -21,6 +21,7 @@ export class PreviewController {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly editorTracker: EditorTracker;
   private readonly updateScheduler: UpdateScheduler;
+  private readonly ownedDiagnosticUris = new Set<string>();
   private isWebviewReady = false;
 
   private constructor(
@@ -35,6 +36,7 @@ export class PreviewController {
     this.editorTracker = new EditorTracker(
       (editor) => this.onActiveEditorChange(editor),
       (document) => this.onTextDocumentChange(document),
+      (document) => this.onTextDocumentClose(document),
     );
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -159,6 +161,7 @@ export class PreviewController {
     });
 
     this.diagnosticsCollection.set(uri, diagnostics);
+    this.ownedDiagnosticUris.add(uri.toString());
   }
 
   private clearDiagnosticsForUri(uriRaw: string, version: number): void {
@@ -172,14 +175,26 @@ export class PreviewController {
     }
 
     this.diagnosticsCollection.delete(uri);
+    this.ownedDiagnosticUris.delete(uri.toString());
+  }
+
+  private onTextDocumentClose(document: vscode.TextDocument): void {
+    if (!this.isWgslDocument(document)) {
+      return;
+    }
+
+    const uriString = document.uri.toString();
+    if (!this.ownedDiagnosticUris.has(uriString)) {
+      return;
+    }
+
+    this.diagnosticsCollection.delete(document.uri);
+    this.ownedDiagnosticUris.delete(uriString);
   }
 
   private onActiveEditorChange(editor: vscode.TextEditor | undefined): void {
     if (!editor) {
-      this.postMessage({
-        type: "preview:clear",
-        reason: "no_active_editor",
-      });
+      // Keep current preview when focus moves to non-editor surfaces (e.g. webview).
       return;
     }
 
@@ -243,7 +258,11 @@ export class PreviewController {
 
   public dispose(): void {
     PreviewController.currentPanel = undefined;
-    this.diagnosticsCollection.clear();
+
+    for (const uriString of this.ownedDiagnosticUris) {
+      this.diagnosticsCollection.delete(vscode.Uri.parse(uriString));
+    }
+    this.ownedDiagnosticUris.clear();
 
     while (this.disposables.length > 0) {
       const item = this.disposables.pop();
