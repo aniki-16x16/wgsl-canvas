@@ -12,69 +12,80 @@
 
     html,
     body {
+      padding: 0;
       margin: 0;
       width: 100%;
       height: 100%;
-      background: #11131a;
+      background: #0a0d14;
       color: #d9deea;
       font-family: "Segoe UI", sans-serif;
+      overflow: hidden;
     }
 
-    .container {
+    .stage {
+      position: relative;
       width: 100%;
       height: 100%;
+      background: radial-gradient(circle at 50% 40%, #1d2435 0%, #0a0d14 60%);
+    }
+
+    .gpu-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
       display: grid;
       place-items: center;
-      background: radial-gradient(circle at 50% 40%, #222836 0%, #11131a 60%);
-      text-align: center;
-      padding: 24px;
+      background: rgba(8, 12, 20, 0.6);
+      backdrop-filter: blur(4px);
+      padding: 20px;
       box-sizing: border-box;
     }
 
-    .card {
+    .overlay.hidden {
+      display: none;
+    }
+
+    .overlay-card {
+      width: min(680px, calc(100% - 40px));
       border: 1px solid #3e465a;
       border-radius: 12px;
       padding: 20px;
-      background: rgba(18, 22, 30, 0.8);
-      max-width: 520px;
+      background: rgba(18, 22, 30, 0.9);
+      text-align: center;
     }
 
     .title {
       margin: 0 0 8px;
       font-size: 18px;
       font-weight: 700;
+      color: #eef3ff;
     }
 
     .desc {
       margin: 0;
       font-size: 13px;
-      line-height: 1.6;
-      color: #b7c0d4;
-    }
-
-    .source {
-      margin-top: 14px;
-      border: 1px solid #2f3648;
-      border-radius: 8px;
-      background: rgba(8, 11, 16, 0.78);
-      color: #a9d1ff;
-      font-size: 12px;
       line-height: 1.5;
-      padding: 10px;
-      text-align: left;
-      max-height: 240px;
-      overflow: auto;
+      color: #b7c0d4;
       white-space: pre-wrap;
       word-break: break-word;
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    <section class="card">
-      <h1 class="title" id="status-text">WGSL Preview 已就绪</h1>
-      <p class="desc" id="detail-text">等待活动 WGSL 文件...</p>
-      <pre class="source" id="source-preview">// waiting for active WGSL document...</pre>
+  <main class="stage">
+    <canvas class="gpu-canvas" id="gpu-canvas"></canvas>
+    <section class="overlay" id="overlay">
+      <div class="overlay-card">
+        <h1 class="title" id="status-text">WGSL Preview 已就绪</h1>
+        <p class="desc" id="detail-text">等待活动 WGSL 文件...</p>
+      </div>
     </section>
   </main>
   <script src="__SCRIPT_URI__"></script>
