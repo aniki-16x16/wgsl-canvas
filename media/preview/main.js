@@ -78,6 +78,20 @@ class Renderer {
     this.runtimeErrorHandler = handler;
   }
 
+  resetTimeBaseline() {
+    this.startTimeMs = performance.now();
+
+    if (!this.device || !this.timeBuffer) {
+      return;
+    }
+
+    this.device.queue.writeBuffer(
+      this.timeBuffer,
+      0,
+      new Float32Array([0, 0, 0, 0]),
+    );
+  }
+
   async initialize() {
     if (!navigator.gpu) {
       return false;
@@ -181,6 +195,7 @@ class Renderer {
     });
 
     this.isReady = true;
+    this.resetTimeBaseline();
     this.resizeCanvas();
     this.writeMouseUniform();
     this.startRendering();
@@ -353,6 +368,7 @@ class Renderer {
       }
 
       this.pipeline = pipeline;
+      this.resetTimeBaseline();
 
       return { ok: true, stale: false, diagnostics: [] };
     } catch (error) {
