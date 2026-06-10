@@ -49,7 +49,7 @@
 
 职责：
 
-- 命令注册（`wgslPreview.openPreview`）。
+- 命令注册（`wgslCanvas.openPreview`）。
 - 管理预览面板生命周期（create/reveal/dispose）。
 - 跟踪活动编辑器和文档变化。
 - 依据文件类型做门禁（`languageId === "wgsl"`，或以 `.wgsl` 扩展名兜底）。

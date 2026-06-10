@@ -1,23 +1,25 @@
 {
-  "name": "wgsl-canvas-preview",
-  "displayName": "WGSL Canvas Preview",
+  "name": "wgsl-canvas",
+  "displayName": "Wgsl Canvas",
   "description": "Preview WGSL shaders in a split webview panel.",
-  "version": "0.0.1",
-  "publisher": "local",
+  "version": "1.0.0",
+  "keywords": [
+    "wgsl",
+    "shader",
+    "webgpu"
+  ],
+  "publisher": "aniki-16x16",
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:wgslPreview.openPreview"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "wgslPreview.openPreview",
+        "command": "wgslCanvas.openPreview",
         "title": "WGSL: Open Preview"
       }
     ]
@@ -31,5 +33,10 @@
     "@types/node": "^20.19.42",
     "@types/vscode": "^1.90.0",
     "typescript": "^5.5.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aniki-16x16/wgsl-canvas"
+  },
+  "license": "MIT"
 }

@@ -3,10 +3,10 @@ import { PreviewController } from "./preview/PreviewController";
 
 export function activate(context: vscode.ExtensionContext): void {
   const diagnosticCollection =
-    vscode.languages.createDiagnosticCollection("wgsl-preview");
+    vscode.languages.createDiagnosticCollection("wgsl-canvas");
 
   const openPreviewCommand = vscode.commands.registerCommand(
-    "wgslPreview.openPreview",
+    "wgslCanvas.openPreview",
     () => {
       PreviewController.createOrShow(context, diagnosticCollection);
     },
